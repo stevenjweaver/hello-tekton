@@ -95,8 +95,29 @@ echo "=========================================================="
 echo "DEPLOYMENT SUCCEEDED"
 if [ ! -z "${APP_SERVICE}" ]; then
   echo ""
-  IP_ADDR=$(bx cs workers ${PIPELINE_KUBERNETES_CLUSTER_NAME} | grep normal | head -n 1 | awk '{ print $2 }')
-  PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
+  # check if a route resource exists in the this kubernetes cluster
+  if kubectl explain route > /dev/null 2>&1; then
+    # Assuming the kubernetes target cluster is an openshift cluster
+    # Check if a route exists for exposing the service ${APP_SERVICE}
+    if  kubectl get routes --namespace ${CLUSTER_NAMESPACE} -o json | jq --arg service "$APP_SERVICE" -e '.items[] | select(.spec.to.name==$service)'; then
+      echo "Existing route to expose service $APP_SERVICE"
+    else
+      # create OpenShift route
+cat > test-route.json << EOF
+{"apiVersion":"route.openshift.io/v1","kind":"Route","metadata":{"name":"${APP_SERVICE}"},"spec":{"to":{"kind":"Service","name":"${APP_SERVICE}"}}}
+EOF
+      echo ""
+      cat test-route.json
+      kubectl apply -f test-route.json --validate=false --namespace ${CLUSTER_NAMESPACE}
+      kubectl get routes --namespace ${CLUSTER_NAMESPACE}
+    fi
+    echo "LOOKING for host in route exposing service $APP_SERVICE"
+    IP_ADDR=$(kubectl get routes --namespace ${CLUSTER_NAMESPACE} -o json | jq --arg service "$APP_SERVICE" -r '.items[] | select(.spec.to.name==$service) | .status.ingress[0].host')
+    PORT=80
+  else 
+    IP_ADDR=$(bx cs workers ${PIPELINE_KUBERNETES_CLUSTER_NAME} | grep normal | head -n 1 | awk '{ print $2 }')
+    PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
+  fi
   echo ""
   echo -e "VIEW THE APPLICATION AT: http://${IP_ADDR}:${PORT}"
 fi
