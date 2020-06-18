@@ -273,7 +273,7 @@ To set up a Private Pipeline Worker, follow these steps:
 
    b. Register a new worker in your cluster (example below. Copy the command provided in the Private Pipeline Worker "Getting Started" Section):   
 
-       kubectl apply --filename "https://private-worker-service.us-south.devops.cloud.ibm.com/install/worker?serviceId=ServiceId-74efc386-0dda-42fb-ac73-7a433935872a&apikey=fcYkUis5kpX7QeMRQbDE9MVlwysjwGR0ntKVGkHFRBbL&name=myk8scluster"
+       kubectl apply --filename "https://private-worker-service.us-south.devops.cloud.ibm.com/install/worker?serviceId=<ServiceId>&apikey=<apikey>&name=<cluster_name>"
 
    c. Verify that the worker was created:
 
